@@ -1,0 +1,7 @@
+# pip requirements file
+#
+# use this file with python pip to load all of the python pre-reqs
+Flask
+gpiozero
+pymemcache
+
