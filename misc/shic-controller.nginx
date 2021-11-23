@@ -6,5 +6,4 @@ server {
         include proxy_params;
         proxy_pass http://unix:/home/pi/shlic-controller.sock;
     }
-
 }

@@ -1,3 +1,8 @@
+"""
+This is the engine for the controller/client portion of SHLiC.
+This runs on the remote boxes with the outlets that need to be controlled.
+"""
+
 from flask import Flask
 from flask import request
 import gpiozero
@@ -149,40 +154,49 @@ def defaultpage():
     return "I'm awake!"
 
 #REST page to check the status of the lockout state
-@app.route("/getLockoutState", methods=['POST', 'GET'])
-def getLockoutState():
+@app.route("/api/ping", methods=['POST', 'GET'])
+def ping():
     if request.method == 'POST':
-        if authenticateUser(request.form['key']):
-            return "AUTH Local control lockout is: %s" % cache.get("localLockoutState")
-        else:
+        if not authenticateUser(request.form['key']):
             return "no auth"
+    return "PONG - GET w/o Auth"
+
+#REST page to check the status of the lockout state
+@app.route("/api/getLockoutState", methods=['POST', 'GET'])
+def getLockoutState():
+    if not authenticateUser(request.form['key']):
+        return "no auth"
     return "Local control lockout is: %s" % cache.get("localLockoutState")
 
 #REST page to get the status of a relay
-@app.route("/getRelayStatus/<relay>", methods=['GET', 'POST'])
+@app.route("/api/getRelayStatus/<relay>", methods=['GET', 'POST'])
 def getRelayStatusPage(relay=0):
-	relay = int(relay)
-	if relay == 0:
-		output = "Relay1: %s \n" %relayObjects[1].is_active
-		output += "Relay2: %s \n" %relayObjects[2].is_active
-		output += "Relay3: %s \n" %relayObjects[3].is_active
-		output += "Relay4: %s \n" %relayObjects[4].is_active
-		output += "Relay5: %s \n" %relayObjects[5].is_active
-		output += "Relay6: %s \n" %relayObjects[6].is_active
-		output += "Relay7: %s \n" %relayObjects[7].is_active
-		output += "Relay8: %s \n" %relayObjects[8].is_active
-	else:
-		if relayObjects[relay].is_active:
-			itis = "on"
-		else:
-			itis = "off"
-		output = "Relay%s is %s \n" % (relay,itis)
-	return output
+    if not authenticateUser(request.form['key']):
+            return "no auth"
+    relay = int(relay)
+    if relay == 0:
+        output = "Relay1: %s \n" %relayObjects[1].is_active
+        output += "Relay2: %s \n" %relayObjects[2].is_active
+        output += "Relay3: %s \n" %relayObjects[3].is_active
+        output += "Relay4: %s \n" %relayObjects[4].is_active
+        output += "Relay5: %s \n" %relayObjects[5].is_active
+        output += "Relay6: %s \n" %relayObjects[6].is_active
+        output += "Relay7: %s \n" %relayObjects[7].is_active
+        output += "Relay8: %s \n" %relayObjects[8].is_active
+    else:
+        if relayObjects[relay].is_active:
+            itis = "on"
+        else:
+            itis = "off"
+        output = "Relay%s is %s \n" % (relay,itis)
+        return output
 
 #REST page to control the relays
-@app.route("/relayControl/<state>/<relay>", methods=['GET', 'POST'])
-@app.route("/relayControl/<state>", methods=['GET', 'POST'])
+@app.route("/api/relayControl/<state>/<relay>", methods=['GET', 'POST'])
+@app.route("/api/relayControl/<state>", methods=['GET', 'POST'])
 def relayControlPage(state,relay=0):
+    if not authenticateUser(request.form['key']):
+        return "no auth"
     relay = int(relay)
     if relay != 0 :
         controlResult = relayControl(relay,state)
