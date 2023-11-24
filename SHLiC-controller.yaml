@@ -63,11 +63,6 @@
         name: python-gpiozero
         state: present
 
-    - name: Install pip
-      apt: 
-        name: python-pip
-        state: present
-
     - name: Install pymemcache via pip
       command: /usr/bin/pip install pymemcache
 
