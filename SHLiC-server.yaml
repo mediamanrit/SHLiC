@@ -1,0 +1,119 @@
+---
+- name: SHLiC Server
+  hosts: localhost
+  become: true
+  become_method: sudo
+
+  tasks:
+    - name: Set the timezone
+      file:
+        src: /usr/share/zoneinfo/America/New_York
+        dest: /etc/localtime
+        state: link
+
+    - name: Update package repo
+      apt: update_cache=yes
+    - name: Upgrade all instaled packages
+      apt: upgrade=dist
+
+    - name: Disable bluetooth LE services
+      systemd:
+        name: bluetooth
+        enabled: no
+        state: stopped
+
+    - name: Install gunicorn
+      apt:
+        name: gunicorn
+        state: present
+
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Site configuration in nginx
+      blockinfile:
+        dest: /etc/nginx/sites-available/shlic-server
+        create: yes
+        state: present
+        block: |
+          server {
+            listen 8080;
+            server_name _;
+            location / {
+              include proxy_params;
+              proxy_pass http://unix:/home/pi/SHLiC/shlic-server.sock;
+            }
+          }
+
+    - name: Link in the site configuration
+      file:
+        src: /etc/nginx/sites-available/shlic-server
+        dest: /etc/nginx/sites-enabled/shlic-server
+        state: link
+
+    - name: Install memcached
+      apt:
+        name: memcached
+        state: present
+
+    - name: Install python-gpiozero
+      apt:
+        name: python-gpiozero
+        state: present
+
+    - name: Install pip
+      apt: 
+        name: python-pip
+        state: present
+
+    - name: Install pymemcache via pip
+      command: /usr/bin/pip install pymemcache
+
+    - name: Install requests via pip
+      command: /usr/bin/pip install requests
+
+    - name: Install Flask via pip
+      command: /usr/bin/pip install flask
+
+    - name: Install shlic-server service configuration file
+      blockinfile:
+        dest: /etc/systemd/system/shlic-server.service
+        create: yes
+        state: present
+        block: |
+          [Unit]
+          Description=gunicorn for shlic-server
+          After=network.target
+          Requires=network.target
+          [Service]
+          User=pi
+          Group=pi
+          WorkingDirectory=/home/pi/SHLiC
+          Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games"
+          ExecStart=/usr/bin/gunicorn --workers 3 --bind unix:/home/pi/SHLiC/shlic-server.sock -m 000 runServer:server.engine.app
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable SHLiC-server service
+      systemd:
+        name: shlic-server
+        enabled: yes
+        state: stopped
+
+    - name: chmod the SHLiC server watchdog script
+      file:
+        path: /home/pi/SHLiC/bin/shlic-serverwatchdog.sh
+        mode: 0755
+        state: file
+
+    - name: Put the watchdog script into crontab
+      blockinfile:
+        dest: /etc/crontab
+        create: yes
+        state: present
+        block: |
+          * * * * * root /home/pi/SHLiC/bin/shlic-serverwatchdog.sh
+
+    - debug: msg="You can now configure shlic-server.cfg as needed.  Once done, reboot."

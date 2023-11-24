@@ -1,0 +1,6 @@
+DEBUG = False
+PORT = "5000"
+KEY = "4164AncientAmberWayLights"
+MASTER = ""
+CLIENTKEY = "4164AncientAmberWayLights"
+CLIENTS = "192.168.0.221:5000"
